@@ -5,35 +5,46 @@ const bcrypt = require('bcrypt');
 const users = require('../data/users');
 const {generateToken, verifyToken} = require('../middlewares/auth')
 
+
+
+router.get('/', (req, res) => {
+    const loginForm = `
+      <form action="/login" method="post">
+      <label for="username">Usuario:</label>
+      <input type="text" id="username" name="username" required><br>
+  
+        <label for="password">Contraseñas:</label>
+        <input type="password" id="username" name="password" required><br>
+  
+        <button type="submit">Iniciar sesión</button>
+      </form>
+      <a href="/dashboard">dashboard</a>
+    `;
+  
+    res.send(loginForm);
+  });
+
+
 // Ruta para iniciar sesión
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
-
-    const user = users.find((u) => u.username === username);
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-        return res.status(401).json({ mensaje: 'Credenciales inválidas' });
+    const user = users.find(
+      (user) => user.username === username && user.password === password
+    );
+    //SI ES CORRECTO, BIEN
+    if (user) {
+      const token = generateToken(user);
+      req.session.token = token;
+      res.redirect('/dashboard');
+  
+      //SI NO ES CORRECTO SALDRA UN ERROR
+    } else {
+      res.status(401).json({ mensaje: 'Credenciales incorrectas' });
     }
-
-    const token = generateToken(user);
-    console.log(token)
-    req.session.token = token;
-
-    res.json({ mensaje: 'Inicio de sesión exitoso', token });
-});
-
-// Ruta para cerrar sesión
-router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ mensaje: 'Error al cerrar sesión' });
-        }
-        res.json({ mensaje: 'Sesión cerrada con éxito' });
-    });
-});
-
+  });
 
 // Ruta para obtener todos los personajes
-router.get('/', verifyToken, async (req, res) => {
+router.get('/characters/', verifyToken, async (req, res) => {
     const url = 'https://rickandmortyapi.com/api/character/';
     try {
         const response = await axios.get(url);
@@ -43,7 +54,7 @@ router.get('/', verifyToken, async (req, res) => {
     }
 });
 // Ruta para buscar un personaje por nombre
-router.get('/:name', verifyToken, async (req, res) => {
+router.get('/characters/:name', verifyToken, async (req, res) => {
     const characterName = req.params.name.toLowerCase();
     const url = `https://rickandmortyapi.com/api/character/?name=${characterName}`;
     try {
@@ -64,6 +75,35 @@ router.get('/:name', verifyToken, async (req, res) => {
     } catch (error) {
         res.status(404).send('<h1>No se encontró el personaje</h1>');
     }
+});
+
+router.get('/dashboard', verifyToken, (req, res) => {
+    const userId = req.user;
+    const user = users.find((user) => user.id === userId);
+    if (user) {
+      res.send(`
+        <h1>Bienvenido, ${user.name}</h1>
+        <p>ID: ${user.id}</p>
+        <p>UserName: ${user.username}</p>
+        <a href="/">HOME</a>
+        <form action="/logout" method="post">
+          <button type="submit">Cerrar sesión</button>
+        </form>
+      `);
+    } else {
+      res.status(401).json({ mensaje: 'Usuario no encontrado' });
+    }
+  });
+
+  
+// Ruta para cerrar sesión
+router.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ mensaje: 'Error al cerrar sesión' });
+        }
+        res.json({ mensaje: 'Sesión cerrada con éxito' });
+    });
 });
 
 module.exports = router;

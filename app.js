@@ -5,20 +5,20 @@ const ruter = require('./rutes/rutes')
 
 const app = express()
 
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-
-app.use('/', ruter);
-
-app.use(session({
+app.use(
+    session({
     secret: hashedSecret,
     resave: false,
     saveUninitialized: true,
-    cookie: {secure: false} 
+    cookie: { secure: false } 
 }
 ))
 
-app.listen(3002, () =>{
-    console.log('expres esta escucahando http://localhost:3002')
+app.use('/', ruter);
+
+app.listen(3000, () =>{
+    console.log('expres esta escucahando http://localhost:3000')
 })
